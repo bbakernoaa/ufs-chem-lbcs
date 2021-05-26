@@ -3,19 +3,19 @@ import xarray as xr
 import monet as m
 
 
-def fix_all(fname,cmaq_fname):
+def fix_all(fname,cmaq_fname,grid_fname='lbcs/grid_spec.nc'):
     o = open_cmaq_bl(lbcf=cmaq_fname)
     print('interpolating bottom')
-    bottom = fix_lbcs_bottom(o,fname)
+    bottom = fix_lbcs_bottom(o,fname,grid_fname)
     bottom = bottom.drop([n for n in bottom.data_vars if 'bottom' not in n])
     print('interpolating top')
-    top = fix_lbcs_top(o,fname)
+    top = fix_lbcs_top(o,fname,grid_fname)
     top = top.drop([n for n in top.data_vars if 'top' not in n])
     print('interpolating right')
-    right = fix_lbcs_right(o,fname)
+    right = fix_lbcs_right(o,fname,grid_fname)
     right = right.drop([n for n in right.data_vars if 'right' not in n])
     print('interpolating left')
-    left = fix_lbcs_left(o,fname)
+    left = fix_lbcs_left(o,fname,grid_fname)
     left = left.drop([n for n in left.data_vars if 'left' not in n])
     
     a = xr.merge([bottom,top,left,right])
@@ -24,16 +24,19 @@ def fix_all(fname,cmaq_fname):
 
     
 #    return right,left
-def fix_lbcs_top(cmaq_lbcs,fname):
+def fix_lbcs_top(cmaq_lbcs,fname,grid_fname):
     orig = xr.open_dataset(fname)
-    lbcs_top = open_fv3_lbcs_for_top(fname=fname)
+    lbcs_top = open_fv3_lbcs_for_top(fname=fname,grid_fname=grid_fname)
     lbcs = interp_top(lbcs_top,cmaq_lbcs)
     top_vars = [n for n in lbcs.data_vars if 'top' in n]
     for h in range(4):
     #h = 0
     #n = 'o3_top'
         for n in top_vars:
-            newvar = orig[n].data
+            if n not in orig.data_vars:
+                newvar = orig['o3_top'].data
+            else:
+                newvar = orig[n].data
             newvar[:,h,4:-4] = lbcs[n].squeeze().data
             newvar[:,h,0] = lbcs[n].squeeze().data[:,0]
             newvar[:,h,1] = lbcs[n].squeeze().data[:,0]
@@ -43,56 +46,78 @@ def fix_lbcs_top(cmaq_lbcs,fname):
             newvar[:,h,-2] = lbcs[n].squeeze().data[:,-1]
             newvar[:,h,-3] = lbcs[n].squeeze().data[:,-1]
             newvar[:,h,-4] = lbcs[n].squeeze().data[:,-1]
-            orig[n].data = newvar
+            if n not in orig.data_vars:
+                orig[n] = orig['o3_top'].copy()
+                orig[n].data = newvar
+            else:
+                orig[n].data = newvar
             orig[n].data = orig[n].where(orig[n] > 0,0)
     dropvars = [n for n    in lbcs.data_vars if 'top' not in n]
 
     return orig.drop(dropvars)
 
-def fix_lbcs_left(cmaq_lbcs,fname):
+def fix_lbcs_left(cmaq_lbcs,fname,grid_fname):
     orig = xr.open_dataset(fname)
-    lbcs_left = open_fv3_lbcs_for_left(fname=fname)
+    lbcs_left = open_fv3_lbcs_for_left(fname=fname,grid_fname=grid_fname)
     lbcs = interp_left(lbcs_left,cmaq_lbcs)
     left_vars = [n for n in lbcs.data_vars if 'left' in n]
     for h in range(4):
     #h = 0
     #n = 'o3_left'
         for n in left_vars:
-            newvar = orig[n].data
+            if n not in orig.data_vars:
+                newvar = orig['o3_left'].data
+            else:
+                newvar = orig[n].data
             newvar[:,:,h] = lbcs[n].squeeze().data
-            orig[n].data = newvar
+            if n not in orig.data_vars:
+                orig[n] = orig['o3_left'].copy()
+                orig[n].data = newvar
+            else:
+                orig[n].data = newvar
             orig[n].data = orig[n].where(orig[n] > 0,0)
     dropvars = [n for n    in lbcs.data_vars if 'left' not in n]
 
     return orig.drop(dropvars)
 
-def fix_lbcs_right(cmaq_lbcs,fname):
+def fix_lbcs_right(cmaq_lbcs,fname,grid_fname):
     orig = xr.open_dataset(fname)
-    lbcs_right = open_fv3_lbcs_for_right(fname=fname)
+    lbcs_right = open_fv3_lbcs_for_right(fname=fname,grid_fname=grid_fname)
     lbcs = interp_right(lbcs_right,cmaq_lbcs)
     right_vars = [n for n in lbcs.data_vars if 'right' in n]
     for h in range(4):
     #h = 0
     #n = 'o3_right'
         for n in right_vars:
-            newvar = orig[n].data
+            if n not in orig.data_vars:
+                newvar = orig['o3_right'].data
+            else:
+                newvar = orig[n].data
             newvar[:,:,h] = lbcs[n].squeeze().data
-            orig[n].data = newvar
+            if n not in orig.data_vars:
+                orig[n] = orig['o3_right'].copy()
+                orig[n].data = newvar
+            else:
+                orig[n].data = newvar
             orig[n].data = orig[n].where(orig[n] > 0,0)
     dropvars = [n for n    in lbcs.data_vars if 'right' not in n]
 
     return orig.drop(dropvars)
 
-def fix_lbcs_bottom(cmaq_lbcs,fname):
+def fix_lbcs_bottom(cmaq_lbcs,fname,grid_fname):
     orig = xr.open_dataset(fname)
-    lbcs_bottom = open_fv3_lbcs_for_bottom(fname=fname)
+    lbcs_bottom = open_fv3_lbcs_for_bottom(fname=fname,grid_fname=grid_fname)
     lbcs = interp_bottom(lbcs_bottom,cmaq_lbcs)
     bottom_vars = [n for n in lbcs.data_vars if 'bottom' in n]
+#     print(lbcs)
     for h in range(4):
     #h = 0
     #n = 'o3_bottom'
         for n in bottom_vars:
-            newvar = orig[n].data
+            if n not in orig.data_vars:
+                newvar = orig['o3_bottom'].data
+            else:
+                newvar = orig[n].data
             newvar[:,h,4:-4] = lbcs[n].squeeze().data
             newvar[:,h,0] = lbcs[n].squeeze().data[:,0]
             newvar[:,h,1] = lbcs[n].squeeze().data[:,0]
@@ -102,6 +127,11 @@ def fix_lbcs_bottom(cmaq_lbcs,fname):
             newvar[:,h,-2] = lbcs[n].squeeze().data[:,-1]
             newvar[:,h,-3] = lbcs[n].squeeze().data[:,-1]
             newvar[:,h,-4] = lbcs[n].squeeze().data[:,-1]
+            if n not in orig.data_vars:
+                orig[n] = orig['o3_bottom'].copy()
+                orig[n].data = newvar
+            else:
+                orig[n].data = newvar
             orig[n].data = newvar
             orig[n].data = orig[n].where(orig[n] > 0,0)
     dropvars = [n for n in lbcs.data_vars if 'bottom' not in n]
@@ -119,10 +149,13 @@ def interp_cmaq_to_fv3_pres(cmaq_pres,fv3_pres,cmaq_val):
     
     
 def interp_bottom(lbcs_bottom,cmaq_lbcs):
+#     print(lbcs_bottom)
+#     print(cmaq_lbcs)
     hmapped = lbcs_bottom.o3_bottom.monet.remap_nearest(cmaq_lbcs,radius_of_influence=1000000).compute()
+#     print(hmapped)
     for n in hmapped.data_vars:
         cmaq_var = hmapped[n]
-        fv3_var = lbcs_bottom[n + '_bottom'].copy()
+        fv3_var = lbcs_bottom['o3_bottom'].copy()
         for i in range(len(hmapped.x)):
             ynew = interp_cmaq_to_fv3_pres(cmaq_var.pres.values,fv3_var.pres.squeeze().values,cmaq_var.isel(y=0,x=i).squeeze())
     #        print(ynew)
@@ -131,10 +164,11 @@ def interp_bottom(lbcs_bottom,cmaq_lbcs):
     return lbcs_bottom
 
 def interp_top(lbcs_bottom,cmaq_lbcs):
+#     print(lbcs_bottom)
     hmapped = lbcs_bottom.o3_top.monet.remap_nearest(cmaq_lbcs,radius_of_influence=1000000).compute()
     for n in hmapped.data_vars:
         cmaq_var = hmapped[n]
-        fv3_var = lbcs_bottom[n + '_top'].copy()
+        fv3_var = lbcs_bottom['o3_top'].copy()
         for i in range(len(hmapped.x)):
             ynew = interp_cmaq_to_fv3_pres(cmaq_var.pres.values,fv3_var.pres.squeeze().values,cmaq_var.isel(y=0,x=i).squeeze())
     #        print(ynew)
@@ -146,7 +180,7 @@ def interp_left(lbcs_bottom,cmaq_lbcs):
     hmapped = lbcs_bottom.o3_left.monet.remap_nearest(cmaq_lbcs,radius_of_influence=1000000).compute()
     for n in hmapped.data_vars:
         cmaq_var = hmapped[n]
-        fv3_var = lbcs_bottom[n + '_left'].copy()
+        fv3_var = lbcs_bottom['o3_left'].copy()
         for i in range(len(hmapped.y)):
             ynew = interp_cmaq_to_fv3_pres(cmaq_var.pres.values,fv3_var.pres.squeeze().values,cmaq_var.isel(y=i,x=0).squeeze())
     #        print(ynew)
@@ -158,13 +192,14 @@ def interp_right(lbcs_bottom,cmaq_lbcs):
     hmapped = lbcs_bottom.o3_right.monet.remap_nearest(cmaq_lbcs,radius_of_influence=1000000).compute()
     for n in hmapped.data_vars:
         cmaq_var = hmapped[n]
-        fv3_var = lbcs_bottom[n + '_right'].copy()
+        fv3_var = lbcs_bottom['o3_right'].copy()
         for i in range(len(hmapped.y)):
             ynew = interp_cmaq_to_fv3_pres(cmaq_var.pres.values,fv3_var.pres.squeeze().values,cmaq_var.isel(y=i,x=0).squeeze())
     #        print(ynew)
             fv3_var[:,i,0] = ynew
         lbcs_bottom[n + '_right'] = fv3_var
     return lbcs_bottom   
+
 def get_bottom_latlon(fname='lbcs/grid_spec.nc'):
     import xarray as xr
     y = xr.open_dataset(fname).rename({'grid_xt':'x','grid_yt':'y','grid_lont':'lon','grid_latt':'lat'})
